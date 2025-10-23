@@ -1,0 +1,9 @@
+{
+  "function-handler": "Lambda::Lambda.Function::Handler",
+  "framework": "net8.0",
+  "function-name": "FraudLambda",
+  "function-description": "Lambda Alerta Fraude",
+  "timeout": 30,
+  "memory-size": 256
+}
+

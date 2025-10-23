@@ -1,0 +1,27 @@
+# Build results
+bin/
+obj/
+out/
+*.log
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+TestResult*
+TestResults/
+*.testsettings
+
+# Docker
+*.env
+docker-compose.override.yml
+
+# Others
+.env
+*.tmp
+*.cache
