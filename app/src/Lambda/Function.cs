@@ -1,6 +1,8 @@
 ﻿using Amazon.Lambda.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Application.Commands;
+using Application.Common;
+using Newtonsoft.Json;
 
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
 
@@ -17,23 +19,36 @@ namespace Lambda
         }
 
         public record UpsertTransactionDayRequest(Guid SourceAccountId, DateTime TransactionDate, decimal Value);
-        public record UpsertTransactionDayResponse(string Status);
 
-        public async Task<UpsertTransactionDayResponse> Handler(UpsertTransactionDayRequest request)
+        public async Task<LambdaResponse<string>> Handler(UpsertTransactionDayRequest request)
         {
-            if (request.Value < 0) throw new ArgumentException("Value must be non-negative.", nameof(request.Value));
+            try
+            {
+                if (request.Value < 0) 
+                {
+                    return ResponseBuilder.Error<string>("Value must be non-negative.");
+                }
 
-            using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceProvider.CreateScope();
 
-            var commands = scope.ServiceProvider.GetRequiredService<TransactionDayCommands>();
+                var commands = scope.ServiceProvider.GetRequiredService<TransactionDayCommands>();
 
-            var result = await commands.UpsertTransactionDayAsync(
-                request.TransactionDate,
-                request.SourceAccountId,
-                request.Value
-            );
+                var result = await commands.UpsertTransactionDayAsync(
+                    request.TransactionDate,
+                    request.SourceAccountId,
+                    request.Value
+                );
 
-            return new UpsertTransactionDayResponse(result);
+                return ResponseBuilder.Ok(result, "Transaction day processed successfully");
+            }
+            catch (ArgumentException ex)
+            {
+                return ResponseBuilder.Error<string>("Invalid input", ex);
+            }
+            catch (Exception ex)
+            {
+                return ResponseBuilder.Error<string>("An unexpected error occurred", ex);
+            }
         }
     }
 }

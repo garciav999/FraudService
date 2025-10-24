@@ -6,6 +6,8 @@ using Infrastructure.Persistence;
 using Infrastructure.Repositories;
 using Application.Interface;
 using Application.Commands;
+using Application.Services;
+using Microsoft.Extensions.Logging;
 
 public class Startup
 {
@@ -22,6 +24,8 @@ public class Startup
 
         services.AddSingleton<IConfiguration>(configuration);
 
+        services.AddLogging();
+
         var conn = configuration.GetConnectionString("DefaultConnection")
                    ?? configuration["ConnectionStrings:DefaultConnection"]
                    ?? System.Environment.GetEnvironmentVariable("DefaultConnection");
@@ -35,6 +39,18 @@ public class Startup
 
         services.AddScoped<ITransactionDayRepository, TransactionDayRepository>();
         services.AddScoped<TransactionDayCommands>();
+
+        // Kafka and Fraud Analysis Services
+        services.AddScoped<IFraudAnalysisService, FraudAnalysisService>();
+        services.AddScoped<IKafkaService, KafkaService>();
+        services.AddScoped<IKafkaConsumerService, KafkaConsumerService>();
+        
+        // Logging
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.AddDebug();
+        });
 
         return services.BuildServiceProvider();
     }
