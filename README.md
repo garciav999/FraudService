@@ -44,7 +44,7 @@ El servicio sigue una arquitectura limpia (Clean Architecture) con las siguiente
 
 ```bash
 # Base de datos
-ConnectionStrings__DefaultConnection="Host=localhost;Database=frauddb;Username=postgres;Password=yourpassword"
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=antifrauddb;Username=postgres;Password=misql"
 
 # Kafka
 Kafka__BootstrapServers="localhost:9092"
@@ -70,7 +70,41 @@ Logging__LogLevel__Microsoft="Warning"
    dotnet restore
    ```
 
-3. **Configurar base de datos**
+3. **Configurar base de datos PostgreSQL**
+   
+   **Opción A: Usando PostgreSQL local**
+   ```sql
+   -- Conectar a PostgreSQL como superusuario
+   psql -U postgres
+   
+   -- ============================================
+   -- CREAR BASE DE DATOS: antifrauddb
+   -- ============================================
+   CREATE DATABASE antifrauddb;
+   \c antifrauddb;
+   
+   -- ============================================
+   -- TABLA: TransactionDay
+   -- ============================================
+   CREATE TABLE IF NOT EXISTS "TransactionDay" (
+       "TransactionDayId" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       "TransactionDate" DATE NOT NULL,
+       "SourceAccountId" UUID NOT NULL,
+       "TotalValue" NUMERIC(12,2) NOT NULL DEFAULT 0,
+       "UpdatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+       CONSTRAINT uq_transactionday UNIQUE ("TransactionDate", "SourceAccountId")
+   );
+   
+   COMMENT ON TABLE "TransactionDay" IS 'Acumulado diario de transacciones por cuenta para validaciones antifraude.';
+   COMMENT ON COLUMN "TransactionDay"."TotalValue" IS 'Monto total acumulado en el día por la cuenta origen.';
+   COMMENT ON COLUMN "TransactionDay"."TransactionDate" IS 'Fecha de las transacciones agrupadas.';
+   
+   -- Crear índices para optimización
+   CREATE INDEX IF NOT EXISTS idx_transactionday_account_date 
+       ON "TransactionDay" ("SourceAccountId", "TransactionDate");
+   ```
+   
+   **Opción B: Usando Entity Framework Migrations**
    ```bash
    cd app/src/Infrastructure
    dotnet ef database update
@@ -188,25 +222,89 @@ private const decimal DAILY_LIMIT = 20500m;
 
 ## 🗄️ Base de datos
 
-### Tabla TransactionDay
+### Esquema de la base de datos
+
+La aplicación utiliza **PostgreSQL** como base de datos principal para almacenar los totales diarios de transacciones.
+
+#### Tabla TransactionDay
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `Id` | GUID | Identificador único |
-| `SourceAccountId` | GUID | ID de la cuenta |
-| `TransactionDate` | DateTime | Fecha de la transacción |
-| `TotalAmount` | Decimal | Total acumulado del día |
-| `CreatedAt` | DateTime | Fecha de creación |
-| `UpdatedAt` | DateTime | Fecha de actualización |
+| `TransactionDayId` | UUID | Identificador único (Primary Key) |
+| `SourceAccountId` | UUID | ID de la cuenta origen |
+| `TransactionDate` | DATE | Fecha de la transacción (solo fecha, sin hora) |
+| `TotalValue` | NUMERIC(12,2) | Total acumulado del día |
+| `UpdatedAt` | TIMESTAMP | Fecha de última actualización |
 
-### Migraciones
+#### Restricciones y índices
+
+```sql
+-- Constraint único para evitar duplicados
+CONSTRAINT uq_transactionday UNIQUE ("TransactionDate", "SourceAccountId")
+
+-- Índice optimizado para consultas frecuentes
+CREATE INDEX idx_transactionday_account_date 
+    ON "TransactionDay" ("SourceAccountId", "TransactionDate");
+```
+
+### Script de creación manual
+
+Si prefieres crear la base de datos manualmente en lugar de usar Entity Framework:
+
+```sql
+-- ============================================
+-- CREAR BASE DE DATOS: antifrauddb
+-- ============================================
+CREATE DATABASE antifrauddb;
+\c antifrauddb;
+
+-- ============================================
+-- TABLA: TransactionDay
+-- ============================================
+CREATE TABLE IF NOT EXISTS "TransactionDay" (
+    "TransactionDayId" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "TransactionDate" DATE NOT NULL,
+    "SourceAccountId" UUID NOT NULL,
+    "TotalValue" NUMERIC(12,2) NOT NULL DEFAULT 0,
+    "UpdatedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_transactionday UNIQUE ("TransactionDate", "SourceAccountId")
+);
+
+COMMENT ON TABLE "TransactionDay" IS 'Acumulado diario de transacciones por cuenta para validaciones antifraude.';
+COMMENT ON COLUMN "TransactionDay"."TotalValue" IS 'Monto total acumulado en el día por la cuenta origen.';
+COMMENT ON COLUMN "TransactionDay"."TransactionDate" IS 'Fecha de las transacciones agrupadas.';
+
+-- Crear índices para optimización
+CREATE INDEX IF NOT EXISTS idx_transactionday_account_date 
+    ON "TransactionDay" ("SourceAccountId", "TransactionDate");
+```
+
+### Configuración de conexión
+
+Asegúrate de que tu `appsettings.json` contenga la cadena de conexión correcta:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=antifrauddb;Username=postgres;Password=misql"
+  }
+}
+```
+
+### Entity Framework Migrations
+
+Si prefieres usar migraciones de Entity Framework:
 
 ```bash
 # Crear migración
-dotnet ef migrations add MigrationName
+cd app/src/Infrastructure
+dotnet ef migrations add InitialCreate
 
 # Aplicar migraciones
 dotnet ef database update
+
+# Verificar migración
+dotnet ef migrations list
 ```
 
 ## 🧪 Testing
