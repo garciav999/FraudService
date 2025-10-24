@@ -8,7 +8,6 @@ public class TransactionDay
     public decimal TotalValue { get; private set; }
     public DateTime UpdateAt { get; private set; }
 
-    // Constructor for EF Core
     private TransactionDay() { }
 
     public TransactionDay(DateTime transactionDate, Guid sourceAccountId, decimal totalValue)

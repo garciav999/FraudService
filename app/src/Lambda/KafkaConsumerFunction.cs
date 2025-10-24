@@ -3,8 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Application.Interface;
 using Application.Common;
 
-//[assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
-
 namespace Lambda
 {
     public class KafkaConsumerFunction
@@ -26,9 +24,7 @@ namespace Lambda
                 
                 var cancellationTokenSource = new CancellationTokenSource();
                 
-                // En un entorno real, esto correría indefinidamente
-                // Para Lambda, podrías ejecutarlo por un tiempo limitado
-                var timeout = TimeSpan.FromMinutes(15); // Lambda max timeout
+                var timeout = TimeSpan.FromMinutes(15); 
                 cancellationTokenSource.CancelAfter(timeout);
                 
                 await consumerService.StartConsumingAsync(cancellationTokenSource.Token);

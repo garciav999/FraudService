@@ -47,7 +47,6 @@ public class KafkaConsumerService : BackgroundService, IKafkaConsumerService
     public async Task StartConsumingAsync(CancellationToken cancellationToken)
     {
         _consumer.Subscribe(_transactionEventsTopic);
-        _logger.LogInformation("Started consuming from topic: {Topic}", _transactionEventsTopic);
 
         try
         {
@@ -65,7 +64,6 @@ public class KafkaConsumerService : BackgroundService, IKafkaConsumerService
                 }
                 catch (ConsumeException ex) when (ex.Error.Code == ErrorCode.UnknownTopicOrPart)
                 {
-                    // Topic aún no existe, esperamos a que Transaction lo cree
                     _logger.LogWarning("Topic '{Topic}' does not exist yet. Waiting for Transaction service to create it...", _transactionEventsTopic);
                     await Task.Delay(5000, cancellationToken);
                 }
@@ -81,7 +79,7 @@ public class KafkaConsumerService : BackgroundService, IKafkaConsumerService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Unexpected error in Kafka consumer");
-                    await Task.Delay(5000, cancellationToken); // Wait before retrying
+                    await Task.Delay(5000, cancellationToken);
                 }
             }
         }
@@ -96,10 +94,8 @@ public class KafkaConsumerService : BackgroundService, IKafkaConsumerService
     {
         try
         {
-            _logger.LogInformation("Processing transaction event: {MessageKey}", message.Key);
-            
-            // 🔍 LOGEAR EL EVENTO RAW para debugging
-            _logger.LogInformation("📨 Raw event from transaction-events: {RawMessage}", message.Value);
+            Console.WriteLine("MESSAGE RECEIVED FROM KAFKA");
+            _logger.LogInformation("Raw event from transaction-events: {RawMessage}", message.Value);
 
             var options = new JsonSerializerOptions
             {
@@ -110,26 +106,19 @@ public class KafkaConsumerService : BackgroundService, IKafkaConsumerService
             var transactionEvent = JsonSerializer.Deserialize<TransactionCreatedEvent>(message.Value, options);
             if (transactionEvent == null)
             {
-                _logger.LogWarning("Failed to deserialize transaction event");
                 return;
             }
 
-            // Realizar análisis anti-fraude
             var analysisResult = await _fraudAnalysisService.AnalyzeTransactionAsync(transactionEvent);
 
-            // Crear evento de respuesta
             var statusEvent = new TransactionStatusEvent(
-                transactionEvent.TransactionExternalId, // Usar el ID de la transacción, no del evento
+                transactionEvent.TransactionExternalId,
                 analysisResult.IsApproved ? "approved" : "rejected",
                 analysisResult.Reason,
                 DateTime.UtcNow
             );
 
-            // Publicar resultado
             await _kafkaService.PublishTransactionStatusAsync(statusEvent);
-
-            _logger.LogInformation("Processed transaction {TransactionId} - Status: {Status}", 
-                transactionEvent.TransactionExternalId, statusEvent.Status);
         }
         catch (Exception ex)
         {

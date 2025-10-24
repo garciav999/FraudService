@@ -16,37 +16,28 @@ namespace Lambda
             listener.Prefixes.Add($"http://localhost:{port}/");
             listener.Start();
 
-            Console.WriteLine($"🚀 Anti-Fraud Service started on: http://localhost:{port}/");
-            Console.WriteLine("📋 Available endpoints:");
-            Console.WriteLine("   POST /upsert-transaction-day - Test transaction day upsert");
-            Console.WriteLine("   POST /analyze-fraud - Test fraud analysis");
-            Console.WriteLine("   POST /start-kafka-consumer - Start Kafka consumer manually");
-            Console.WriteLine();
+            Console.WriteLine($"Anti-Fraud Service started on: http://localhost:{port}/");
 
             var function = new Function();
             var fraudAnalysisFunction = new FraudAnalysisFunction();
             var kafkaConsumerFunction = new KafkaConsumerFunction();
-
-            // 🔥 INICIAR KAFKA CONSUMER AUTOMÁTICAMENTE
-            Console.WriteLine("🔄 Starting Kafka consumer automatically...");
             var consumerCancellationTokenSource = new CancellationTokenSource();
             
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    // Usar la función lambda existente que ya maneja los scopes correctamente
                     var result = await kafkaConsumerFunction.StartConsumer();
-                    Console.WriteLine($"✅ Kafka consumer result: {result.Message}");
+                    Console.WriteLine($"Kafka consumer result: {result.Message}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Kafka Consumer Error: {ex.Message}");
-                    Console.WriteLine($"   Details: {ex.StackTrace}");
+                    Console.WriteLine($"Kafka Consumer Error: {ex.Message}");
+                    Console.WriteLine($"Details: {ex.StackTrace}");
                 }
             });
 
-            Console.WriteLine("⏳ Waiting for HTTP requests and Kafka events... (Press Ctrl+C to stop)\n");
+            Console.WriteLine("Waiting for HTTP requests and Kafka events... (Press Ctrl+C to stop)\n");
 
             while (true)
             {
@@ -57,7 +48,7 @@ namespace Lambda
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Server Error: {ex.Message}");
+                    Console.WriteLine($"Server Error: {ex.Message}");
                 }
             }
         }
@@ -73,14 +64,14 @@ namespace Lambda
 
             try
             {
-                Console.WriteLine($"\n🔔 New Request - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                Console.WriteLine($"\nNew Request - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 Console.WriteLine($"   Method: {request.HttpMethod}");
                 Console.WriteLine($"   URL: {request.Url?.PathAndQuery}");
 
                 if (request.HttpMethod != "POST")
                 {
                     await SendResponse(response, 405, new { error = "Only POST method allowed" });
-                    Console.WriteLine("   ❌ 405 - Method Not Allowed");
+                    Console.WriteLine("405 - Method Not Allowed");
                     return;
                 }
 
@@ -182,7 +173,6 @@ namespace Lambda
         {
             try
             {
-                // Ejecutar en background para no bloquear la respuesta
                 _ = Task.Run(async () =>
                 {
                     try

@@ -38,10 +38,7 @@ public class KafkaService : IKafkaService
                 Value = message
             };
 
-            var result = await _producer.ProduceAsync(_transactionStatusTopic, kafkaMessage);
-            
-            _logger.LogInformation("Published transaction status event for transaction {TransactionId} to topic {Topic}", 
-                statusEvent.TransactionId, _transactionStatusTopic);
+            await _producer.ProduceAsync(_transactionStatusTopic, kafkaMessage);
         }
         catch (Exception ex)
         {

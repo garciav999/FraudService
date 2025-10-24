@@ -4,8 +4,6 @@ using Application.Interface;
 using Application.DTOs;
 using Application.Common;
 
-//[assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
-
 namespace Lambda
 {
     public class FraudAnalysisFunction
@@ -19,7 +17,7 @@ namespace Lambda
         }
 
         public record FraudAnalysisRequest(
-            Guid TransactionExternalId,  // Cambié para coincidir
+            Guid TransactionExternalId,
             Guid SourceAccountId,
             Guid TargetAccountId,        
             int TransferTypeId,          

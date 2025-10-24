@@ -25,7 +25,6 @@ public class TransactionDayRepository : ITransactionDayRepository
 
     public async Task<string> UpsertTransactionDayAsync(DateTime transactionDate, Guid sourceAccountId, decimal value)
     {
-        // Normaliza la fecha a UTC y sin hora
         var targetDate = new DateTime(transactionDate.Year, transactionDate.Month, transactionDate.Day, 0, 0, 0, DateTimeKind.Utc);
 
         var existingTransaction = await _context.TransactionDays
@@ -44,7 +43,6 @@ public class TransactionDayRepository : ITransactionDayRepository
         }
 
         await _context.SaveChangesAsync();
-        // Retorna "approved" porque la validación ya fue realizada por AnalyzeTransactionAsync
         return "approved";
     }
 

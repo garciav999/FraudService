@@ -16,7 +16,7 @@ public record TransactionCreatedEvent(
 
 public record TransactionStatusEvent(
     Guid TransactionId,
-    string Status, // "approved" or "rejected"
+    string Status,
     string Reason,
     DateTime ProcessedAt,
     string ProcessedBy = "anti-fraud-service"

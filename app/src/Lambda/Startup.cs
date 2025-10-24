@@ -40,14 +40,13 @@ public class Startup
         services.AddScoped<ITransactionDayRepository, TransactionDayRepository>();
         services.AddScoped<TransactionDayCommands>();
 
-        // Kafka and Fraud Analysis Services
         services.AddScoped<IFraudAnalysisService, FraudAnalysisService>();
         services.AddScoped<IKafkaService, KafkaService>();
         services.AddScoped<IKafkaConsumerService, KafkaConsumerService>();
         
-        // Logging
         services.AddLogging(builder =>
         {
+            builder.AddConfiguration(configuration.GetSection("Logging"));
             builder.AddConsole();
             builder.AddDebug();
         });
