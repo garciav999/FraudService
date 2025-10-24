@@ -1,0 +1,15 @@
+# Coverage configuration
+# This file specifies coverage settings for the Application.Tests project
+
+# Exclude files/directories from coverage
+**/bin/**
+**/obj/**
+**/TestResults/**
+**/CoverageReport/**
+
+# Include only Application layer
+../../../src/Application/**/*.cs
+
+# Exclude test files
+**/*Tests.cs
+**/*Test.cs

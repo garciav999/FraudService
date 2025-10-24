@@ -1,0 +1,438 @@
+openapi: 3.0.3
+info:
+  title: Anti-Fraud Service API
+  description: |
+    Servicio de análisis anti-fraude que procesa transacciones en tiempo real.
+    
+    ## Funcionalidades principales:
+    - ✅ Análisis de transacciones en tiempo real
+    - ✅ Validación de reglas de fraude ($2,500 individual, $20,500 diario)
+    - ✅ Integración con Kafka para eventos
+    - ✅ Gestión de totales diarios por cuenta
+    
+    ## Flujo de trabajo:
+    1. Recibe eventos de transacciones via Kafka (`transaction-events`)
+    2. Aplica reglas de detección de fraude
+    3. Actualiza totales diarios si es aprobado
+    4. Envía resultado via Kafka (`transaction-status-events`)
+  version: 1.0.0
+  contact:
+    name: Anti-Fraud Team
+    email: antifraud@company.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5051
+    description: Servidor de desarrollo
+  - url: https://api-antifraud.company.com
+    description: Servidor de producción
+
+tags:
+  - name: fraud-analysis
+    description: Análisis de fraude de transacciones
+  - name: transaction-day
+    description: Gestión de totales diarios
+  - name: kafka
+    description: Gestión de consumidores Kafka
+  - name: health
+    description: Salud del servicio
+
+paths:
+  /analyze-fraud:
+    post:
+      tags:
+        - fraud-analysis
+      summary: Analizar transacción para detección de fraude
+      description: |
+        Analiza una transacción individual aplicando las reglas de detección de fraude:
+        - Monto individual no debe exceder $2,500
+        - Total diario no debe exceder $20,500
+      operationId: analyzeFraud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FraudAnalysisRequest'
+            examples:
+              approved_transaction:
+                summary: Transacción que será aprobada
+                value:
+                  transactionExternalId: "550e8400-e29b-41d4-a716-446655440001"
+                  sourceAccountId: "11111111-1111-1111-1111-111111111111"
+                  targetAccountId: "22222222-2222-2222-2222-222222222222"
+                  transferTypeId: 1
+                  value: 1500.00
+                  status: "Pending"
+                  id: "550e8400-e29b-41d4-a716-446655440002"
+                  occurredAt: "2025-10-24T14:30:00Z"
+                  eventType: "transaction.created"
+              rejected_high_amount:
+                summary: Transacción rechazada por monto alto
+                value:
+                  transactionExternalId: "550e8400-e29b-41d4-a716-446655440003"
+                  sourceAccountId: "11111111-1111-1111-1111-111111111111"
+                  targetAccountId: "22222222-2222-2222-2222-222222222222"
+                  transferTypeId: 1
+                  value: 3000.00
+                  status: "Pending"
+                  id: "550e8400-e29b-41d4-a716-446655440004"
+                  occurredAt: "2025-10-24T14:30:00Z"
+                  eventType: "transaction.created"
+      responses:
+        '200':
+          description: Análisis completado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FraudAnalysisResponse'
+              examples:
+                approved:
+                  summary: Transacción aprobada
+                  value:
+                    success: true
+                    data:
+                      isApproved: true
+                      reason: "Transaction approved"
+                      riskScore: 0
+                      riskFactors: []
+                    message: "Fraud analysis completed successfully"
+                    error: null
+                    timestamp: "2025-10-24T14:30:00Z"
+                rejected:
+                  summary: Transacción rechazada
+                  value:
+                    success: true
+                    data:
+                      isApproved: false
+                      reason: "Transaction rejected - Individual amount exceeds $2,500 limit"
+                      riskScore: 100
+                      riskFactors: ["Individual amount $3,000.00 exceeds $2,500 limit"]
+                    message: "Fraud analysis completed successfully"
+                    error: null
+                    timestamp: "2025-10-24T14:30:00Z"
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /upsert-transaction-day:
+    post:
+      tags:
+        - transaction-day
+      summary: Crear o actualizar total diario de transacciones
+      description: |
+        Crea o actualiza el registro de total diario para una cuenta específica.
+        Este endpoint es principalmente para testing manual.
+      operationId: upsertTransactionDay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertTransactionDayRequest'
+            example:
+              sourceAccountId: "11111111-1111-1111-1111-111111111111"
+              transactionDate: "2025-10-24T14:30:00Z"
+              value: 1500.50
+      responses:
+        '200':
+          description: Total diario actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpsertTransactionDayResponse'
+              example:
+                success: true
+                data: "approved"
+                message: "Transaction day processed successfully"
+                error: null
+                timestamp: "2025-10-24T14:30:00Z"
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /start-kafka-consumer:
+    post:
+      tags:
+        - kafka
+      summary: Iniciar consumidor Kafka manualmente
+      description: |
+        Inicia el consumidor de Kafka en segundo plano para procesar eventos.
+        Normalmente el consumidor se inicia automáticamente al arrancar el servicio.
+      operationId: startKafkaConsumer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              example: {}
+      responses:
+        '200':
+          description: Consumidor Kafka iniciado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KafkaConsumerResponse'
+              example:
+                success: true
+                data: "Kafka consumer completed successfully"
+                message: "Kafka consumer started in background"
+                error: null
+                timestamp: "2025-10-24T14:30:00Z"
+
+  /health:
+    get:
+      tags:
+        - health
+      summary: Estado de salud del servicio
+      description: Verifica el estado de salud del servicio y sus dependencias
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Servicio saludable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    FraudAnalysisRequest:
+      type: object
+      required:
+        - transactionExternalId
+        - sourceAccountId
+        - targetAccountId
+        - transferTypeId
+        - value
+        - status
+        - id
+        - occurredAt
+        - eventType
+      properties:
+        transactionExternalId:
+          type: string
+          format: uuid
+          description: ID externo de la transacción
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        sourceAccountId:
+          type: string
+          format: uuid
+          description: ID de la cuenta origen
+          example: "11111111-1111-1111-1111-111111111111"
+        targetAccountId:
+          type: string
+          format: uuid
+          description: ID de la cuenta destino
+          example: "22222222-2222-2222-2222-222222222222"
+        transferTypeId:
+          type: integer
+          description: Tipo de transferencia
+          example: 1
+        value:
+          type: number
+          format: decimal
+          minimum: 0
+          description: Monto de la transacción
+          example: 1500.00
+        status:
+          type: string
+          description: Estado de la transacción
+          example: "Pending"
+        id:
+          type: string
+          format: uuid
+          description: ID del evento
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        occurredAt:
+          type: string
+          format: date-time
+          description: Fecha y hora de la transacción
+          example: "2025-10-24T14:30:00Z"
+        eventType:
+          type: string
+          description: Tipo de evento
+          example: "transaction.created"
+
+    FraudAnalysisResult:
+      type: object
+      properties:
+        isApproved:
+          type: boolean
+          description: Si la transacción fue aprobada
+          example: true
+        reason:
+          type: string
+          description: Razón de la decisión
+          example: "Transaction approved"
+        riskScore:
+          type: number
+          format: decimal
+          description: Puntuación de riesgo (0-100)
+          example: 0
+        riskFactors:
+          type: array
+          items:
+            type: string
+          description: Factores de riesgo identificados
+          example: []
+
+    FraudAnalysisResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Si la operación fue exitosa
+          example: true
+        data:
+          $ref: '#/components/schemas/FraudAnalysisResult'
+        message:
+          type: string
+          description: Mensaje descriptivo
+          example: "Fraud analysis completed successfully"
+        error:
+          type: string
+          nullable: true
+          description: Mensaje de error si aplica
+          example: null
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp de la respuesta
+          example: "2025-10-24T14:30:00Z"
+
+    UpsertTransactionDayRequest:
+      type: object
+      required:
+        - sourceAccountId
+        - transactionDate
+        - value
+      properties:
+        sourceAccountId:
+          type: string
+          format: uuid
+          description: ID de la cuenta
+          example: "11111111-1111-1111-1111-111111111111"
+        transactionDate:
+          type: string
+          format: date-time
+          description: Fecha de la transacción
+          example: "2025-10-24T14:30:00Z"
+        value:
+          type: number
+          format: decimal
+          minimum: 0
+          description: Valor a agregar al total diario
+          example: 1500.50
+
+    UpsertTransactionDayResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: string
+          description: Resultado de la operación
+          example: "approved"
+        message:
+          type: string
+          example: "Transaction day processed successfully"
+        error:
+          type: string
+          nullable: true
+          example: null
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-24T14:30:00Z"
+
+    KafkaConsumerResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: string
+          example: "Kafka consumer completed successfully"
+        message:
+          type: string
+          example: "Kafka consumer started in background"
+        error:
+          type: string
+          nullable: true
+          example: null
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-24T14:30:00Z"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-24T14:30:00Z"
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+              example: "up"
+            kafka:
+              type: string
+              enum: [up, down]
+              example: "up"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          type: object
+          nullable: true
+          example: null
+        message:
+          type: string
+          example: "An error occurred"
+        error:
+          type: string
+          example: "Invalid input parameters"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-24T14:30:00Z"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key para autenticación
+
+security:
+  - ApiKeyAuth: []

@@ -1,0 +1,40 @@
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>
+            <!-- Exclude test assemblies -->
+            [*.Tests]*
+            [*Test*]*
+            <!-- Exclude third-party assemblies -->
+            [Microsoft.*]*
+            [System.*]*
+            [Confluent.*]*
+            <!-- Exclude generated files -->
+            [*]*Program*
+            [*]*AssemblyInfo*
+          </Exclude>
+          <Include>
+            <!-- Include only Application layer -->
+            [Application]*
+          </Include>
+          <ExcludeByAttribute>
+            <!-- Exclude methods with these attributes -->
+            <Attribute>System.Diagnostics.DebuggerNonUserCodeAttribute</Attribute>
+            <Attribute>System.Runtime.CompilerServices.CompilerGeneratedAttribute</Attribute>
+            <Attribute>System.CodeDom.Compiler.GeneratedCodeAttribute</Attribute>
+            <Attribute>System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute</Attribute>
+          </ExcludeByAttribute>
+          <ExcludeByFile>
+            <!-- Exclude specific files -->
+            <Path>**/Migrations/**</Path>
+            <Path>**/Program.cs</Path>
+            <Path>**/Startup.cs</Path>
+          </ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
